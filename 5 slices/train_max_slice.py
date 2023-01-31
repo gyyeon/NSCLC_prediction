@@ -191,16 +191,16 @@ def main(args):
 
     kf = StratifiedKFold(n_splits=5, shuffle=True)     
     # Dataset                                                             
-    recur_dataset = RecurDataset(csv_file='./datasets/csv/sorted_GESIEMENS_530.csv',root_dir='./datasets/2D/5mm5slice/max_img')      
-    recur_df = pd.read_csv('./datasets/csv/sorted_GESIEMENS_530.csv')
+    recur_dataset = RecurDataset(csv_file='../../datasets/csv/sorted_GESIEMENS_530.csv',root_dir='../../datasets/2D/5mm5slice/max_img')      
+    recur_df = pd.read_csv('../../datasets/csv/sorted_GESIEMENS_530.csv')
  
     total_target_list = recur_df.iloc[:,1].tolist()
     num_epochs = 500
     batch_size = 32
 
     # test_idx, path 읽어오기
-    f1 = open("./datasets/model_idx/test_idx.txt", 'r')         
-    f2 = open("./datasets/model_idx/train_idx.txt", 'r')        
+    f1 = open("../../datasets/model_idx/test_idx.txt", 'r')         
+    f2 = open("../../datasets/model_idx/train_idx.txt", 'r')        
     test_lines = f1.readlines()
     train_lines = f2.readlines()
     for k,(a,b) in enumerate(zip(test_lines,train_lines)):   # 5-fold CV
@@ -243,7 +243,7 @@ parser.add_argument('--cuda', type=str, default='0', help='cuda number')
 parser.add_argument('--seed', type=int, default=42, help='set seed')
 args=parser.parse_args()
 
-result_dir = './datasets/results/Single_model/max'
+result_dir = '../../datasets/results/Single_model/max'
 device = torch.device("cuda:"+args.cuda if torch.cuda.is_available() else "cpu") 
 
 main(args)
