@@ -126,12 +126,12 @@ class RecurDataset(Dataset):
         return sample
 
 def main(args):  
-    if (os.path.isdir('./datasets/results/models'+args.model+'/recur_prob/max')==False): os.mkdir('./datasets/results/models'+args.model+'/recur_prob/max') 
-    if (os.path.isdir('./datasets/results/models'+args.model+'/predictions/max')==False): os.mkdir('./datasets/results/models'+args.model+'/predictions/max') 
-    if (os.path.isdir('./datasets/Tumors/'+args.model+'/test/max')==False): os.mkdir('./datasets/Tumors/'+args.model+'/test/max') 
+    if (os.path.isdir(result_dir)==False): os.mkdir(result_dir) 
+    if (os.path.isdir(result_dir+'/recur_prob')==False): os.mkdir(result_dir+'/recur_prob') 
+    if (os.path.isdir(result_dir+'/recur_pred')==False): os.mkdir(result_dir+'/recur_pred') 
 
-    recur_dataset = RecurDataset(csv_file='./csv/sorted_GESIEMENS_530.csv',root_dir='./datasets/2D/530_GESIEMENS/cropped/Resized_total/5mm5slice/max/max_img')      
-    recur_df = pd.read_csv('./csv/sorted_GESIEMENS_530.csv')
+    recur_dataset = RecurDataset(csv_file='../../datasets/csv/sorted_GESIEMENS_530.csv',root_dir='../../datasets/2D/5mm5slice/max_img')        
+    recur_df = pd.read_csv('../../datasets/csv/sorted_GESIEMENS_530.csv')
 
     total_name_list = recur_df.iloc[:,0].tolist()   
     batch_size = 32
@@ -144,7 +144,7 @@ def main(args):
         load_idx.append('epoch_'+str(load))
         total_accuracy = 0.0
 
-        f1 = open("./datasets/results/models_idx/noval/530/test_idx.txt", 'r')       
+        f1 = open("../../datasets/model_idx/test_idx.txt", 'r')       
         lines = f1.readlines()
 
         for j,a in enumerate(lines):   # 5-fold   
@@ -158,7 +158,7 @@ def main(args):
             testloader = torch.utils.data.DataLoader(testset, batch_size = batch_size)
             dataloaders = {'test': testloader}    
 
-            modelA.load_state_dict(torch.load( os.path.join('./datasets/results/models'+args.model, 'max/{}fold-epoch-{}.pth'.format(j+1,load))),strict=False)
+            modelA.load_state_dict(torch.load( os.path.join(result_dir, '{}fold-epoch-{}.pth'.format(j+1,load))),strict=False)
             auc, acc, predictions, actuals, recur_prob, scores = evaluate_model(dataloaders['test'], modelA)  
             print(str(j+1) + 'fold____Accuracy: %.3f' % acc) 
 
@@ -179,12 +179,11 @@ def main(args):
         mean_test_acc.append(mean_accuracy)
     
     df = pd.DataFrame(data={"epoch": load_idx, "eval_acc": mean_test_acc})  
-    df.to_csv("./datasets/Tumors/"+args.model+"/test/max/epoch_acc.csv", sep=',',index=False)
     best_epoch_list = [i for i in df.index.tolist() if df.loc[i,'eval_acc']==best_acc]
     
 
     for epoch in best_epoch_list: 
-        f3 = open("./datasets/results/models"+args.model+"/max_metrics_"+str(epoch)+"Epoch.txt", 'w')
+        f3 = open(result_dir + '/max_metrics_'+str(epoch)+'Epoch.txt', 'w')
         precision_score, f1_score, recall_score, auc_score, acc_list = [],[],[],[],[]
 
         print('====================Epoch '+str(epoch)+'====================')
@@ -199,7 +198,7 @@ def main(args):
             
             testloader = torch.utils.data.DataLoader(testset, batch_size = batch_size)
 
-            modelA.load_state_dict(torch.load(os.path.join('./datasets/results/models'+args.model, 'max/{}fold-epoch-{}.pth'.format(k+1,epoch))), strict=False)
+            modelA.load_state_dict(torch.load(os.path.join(result_dir, '{}fold-epoch-{}.pth'.format(k+1,epoch))), strict=False)
             auc, acc, predictions, actuals, recur_prob, scores = evaluate_model(testloader, modelA)  
             precision_score.append(scores[0])  
             recall_score.append(scores[1])
@@ -210,7 +209,7 @@ def main(args):
 
             # prob_data = pd.DataFrame(data={"recur_prob": recur_prob}, index = test_fn)  
             pred_data = pd.DataFrame(data={"predictions": predictions}, index = test_fn)       
-            pred_data.to_csv('./datasets/results/models'+args.model+'/predictions/max/predictions_'+str(k+1)+'fold_'+str(epoch)+'Epoch.csv') 
+            pred_data.to_csv(result_dir+'/recur_pred/'+str(k+1)+'fold_'+str(epoch)+'Epoch.csv') 
         print('Acc: '+str(acc_list)+'-----'+str(sum(acc_list)/5))
         print('AUC: '+str(sum(auc_score)/5)+'\n')
         print('F1 score: '+str(f1_score)+'-----'+str(sum(f1_score)/5))
@@ -225,11 +224,12 @@ def main(args):
 
 # Train/Test settings
 parser = argparse.ArgumentParser(description='NSCLC recurrence prediction----5fold CV')
-parser.add_argument('--model', type=str, default='0', help='model number')
+parser.add_argument('--model_type', type=str, default='max', help='')
 parser.add_argument('--cuda', type=str, default='0', help='cuda number')
 parser.add_argument('--seed', type=int, default=42, help='set seed')
 args=parser.parse_args()
 
+result_dir = '../../datasets/results/Single_model/'
 device = torch.device("cuda:"+args.cuda if torch.cuda.is_available() else "cpu") 
 
 main(args)
