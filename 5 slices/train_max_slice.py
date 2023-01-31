@@ -107,7 +107,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs, fold, datalo
             if phase =='test':             
                 valLosses.append(epoch_loss)
                 valAcc.append(epoch_acc.item())
-                torch.save(model.state_dict(), os.path.join('./datasets/results/models'+args.model, 'max/{}fold-epoch-{}.pth'.format(fold, epoch)))  
+                torch.save(model.state_dict(), os.path.join(result_dir, '{}fold-epoch-{}.pth'.format(fold, epoch)))  
                 if epoch_acc > best_acc: 
                     best_acc = epoch_acc 
                     best_epoch = epoch  
@@ -185,22 +185,22 @@ def weight_sampler(labels):
 
 
 def main(args):
-    if (os.path.isdir('./datasets/results/models'+args.model+'/max')==False): os.mkdir('./datasets/results/models'+args.model+'/max')  
-    if (os.path.isdir('./datasets/Tumors/'+args.model+'/loss/max')==False): os.mkdir('./datasets/Tumors/'+args.model+'/loss/max') 
-    if (os.path.isdir('./datasets/Tumors/'+args.model+'/acc/max')==False): os.mkdir('./datasets/Tumors/'+args.model+'/acc/max') 
+    if (os.path.isdir(result_dir)==False): os.mkdir(result_dir)  
+    if (os.path.isdir(result_dir + '/loss')==False): os.mkdir(result_dir + '/loss') 
+    if (os.path.isdir(result_dir + '/acc')==False): os.mkdir(result_dir + '/acc') 
 
     kf = StratifiedKFold(n_splits=5, shuffle=True)     
     # Dataset                                                             
-    recur_dataset = RecurDataset(csv_file='./csv/sorted_GESIEMENS_530.csv',root_dir='./datasets/2D/530_GESIEMENS/cropped/Resized_total/5mm5slice/max/max_img')      
-    recur_df = pd.read_csv('./csv/sorted_GESIEMENS_530.csv')
+    recur_dataset = RecurDataset(csv_file='./datasets/csv/sorted_GESIEMENS_530.csv',root_dir='./datasets/2D/5mm5slice/max_img')      
+    recur_df = pd.read_csv('./datasets/csv/sorted_GESIEMENS_530.csv')
  
     total_target_list = recur_df.iloc[:,1].tolist()
     num_epochs = 500
     batch_size = 32
 
     # test_idx, path 읽어오기
-    f1 = open("./datasets/results/models_idx/noval/530/test_idx.txt", 'r')         
-    f2 = open("./datasets/results/models_idx/noval/530/train_idx.txt", 'r')        
+    f1 = open("./datasets/model_idx/test_idx.txt", 'r')         
+    f2 = open("./datasets/model_idx/train_idx.txt", 'r')        
     test_lines = f1.readlines()
     train_lines = f2.readlines()
     for k,(a,b) in enumerate(zip(test_lines,train_lines)):   # 5-fold CV
@@ -243,7 +243,7 @@ parser.add_argument('--cuda', type=str, default='0', help='cuda number')
 parser.add_argument('--seed', type=int, default=42, help='set seed')
 args=parser.parse_args()
 
+result_dir = './datasets/results/Single_model/max'
 device = torch.device("cuda:"+args.cuda if torch.cuda.is_available() else "cpu") 
 
 main(args)
-
