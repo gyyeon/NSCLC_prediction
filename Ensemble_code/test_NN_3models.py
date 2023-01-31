@@ -98,20 +98,19 @@ def weight_sampler(labels):
 
 def main(args):  
     '''
-    epoch_A, epoch_B, epoch_C: Best epochs for single model predictions (filename)
+    epoch_A, epoch_B, epoch_C: Best epochs for single model predictions
     check model name for prediction files
     '''
-    pred_df_A_list = [pd.read_csv(args.single_dir+ 'predictions_'+str(i+1)+'fold_'+args.epoch_A+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)] 
-    pred_df_B_list = [pd.read_csv(args.single_dir+ 'predictions_'+str(i+1)+'fold_'+args.epoch_B+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)]
-    pred_df_C_list = [pd.read_csv(args.single_dir+ 'predictions_'+str(i+1)+'fold_'+args.epoch_C+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)]
-    pred_dataset_list = [pd.concat([pred_df_A_list[j], pred_df_B_list[j], pred_df_C_list[j]], axis=1) for j in range(5)]
+    pred_df_A_list = [pd.read_csv(single_dir + str(args.single_type[0])+'/'+str(i+1)+'fold_'+args.epoch_A+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)] 
+    pred_df_B_list = [pd.read_csv(single_dir + str(args.single_type[1])+'/'+str(i+1)+'fold_'+args.epoch_B+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)]
+    pred_df_C_list = [pd.read_csv(single_dir + str(args.single_type[2])+'/'+str(i+1)+'fold_'+args.epoch_C+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)]
+    pred_dataset_list = [pd.concat([pred_df_A_list[j],pred_df_B_list[j],pred_df_C_list[j]], axis=1) for j in range(5)]
 
-    ensemble_result_dir = args.ensemble_dir + "3models/"+args.model_type
-    if not os.path.exists(ensemble_result_dir): os.mkdir(ensemble_result_dir)
-    if not os.path.exists(ensemble_result_dir + '/metrics'): os.mkdir(ensemble_result_dir + '/metrics')
-    if not os.path.exists(ensemble_result_dir + '/test'): os.mkdir(ensemble_result_dir + '/test')
+    if (os.path.isdir(ensemble_result_dir)==False): os.mkdir(ensemble_result_dir) 
+    if (os.path.isdir(ensemble_result_dir+'/recur_prob')==False): os.mkdir(ensemble_result_dir+'/recur_prob') 
+    if (os.path.isdir(ensemble_result_dir+'/recur_pred')==False): os.mkdir(ensemble_result_dir+'/recur_pred') 
 
-    recur_df = pd.read_csv('./datasets/csv/sorted_GESIEMENS_530.csv')   
+    recur_df = pd.read_csv('../../datasets/csv/sorted_GESIEMENS_530.csv')   
     total_name_list = recur_df.iloc[:,0].tolist()   
     batch_size = 32
     best_acc = 0
@@ -129,7 +128,7 @@ def main(args):
         load_idx.append('epoch_'+str(load))
         total_accuracy, total_auc = 0.0, 0.0
 
-        f1 = open("./datasets/models_idx/noval/test_idx.txt", 'r')  
+        f1 = open("../../datasets/model_idx/test_idx.txt", 'r')  
         lines = f1.readlines()
 
         for j,a in enumerate(lines):   # 5-fold  
@@ -148,7 +147,7 @@ def main(args):
             dataloaders = {'test': testloader}    
 
             # Test
-            modelA.load_state_dict(torch.load(os.path.join(args.ensemble_dir + '3models/'+args.model_type+'/{}fold-epoch-{}.pth'.format(j+1,load))),strict=False)
+            modelA.load_state_dict(torch.load(os.path.join(ensemble_result_dir,'/{}fold-epoch-{}.pth'.format(j+1,load))),strict=False)
             auc, acc, predictions, actuals, recur_prob, scores = evaluate_model(dataloaders['test'], modelA)  
             print(str(j+1) + 'fold____Accuracy: %.3f' % acc) 
 
@@ -171,12 +170,11 @@ def main(args):
         mean_test_acc.append(mean_accuracy)
 
     df = pd.DataFrame(data={"epoch":load_idx, "eval_acc": mean_test_acc})  
-    df.to_csv(ensemble_result_dir + "/test/epoch_acc.csv", sep=',',index=False)
     best_epoch_list = [i for i in df.index.tolist() if df.loc[i,'eval_acc']==best_acc]
     
 
     for epoch in best_epoch_list:
-        f3 = open(ensemble_result_dir + "/metrics/NN_metrics_"+str(epoch)+"Epoch.txt", 'w')
+        f3 = open(ensemble_result_dir + "/NN_metrics_"+str(epoch)+"Epoch.txt", 'w')
         precision_score = []
         f1_score = []
         recall_score = []
@@ -205,10 +203,9 @@ def main(args):
             acc_list.append(acc)     
             f3.write(str(classification_report(actuals, predictions))+'\n') 
 
-            prob_data = pd.DataFrame(data={"recur_prob": recur_prob}, index = test_fn)  
-            prob_data.to_csv(ensemble_result_dir+ '/metrics/recur_prob_'+str(k+1)+'fold_'+str(epoch)+'Epoch.csv') 
+            # prob_data = pd.DataFrame(data={"recur_prob": recur_prob}, index = test_fn)  
             pred_data = pd.DataFrame(data={"predictions": predictions}, index = test_fn)       
-            pred_data.to_csv(ensemble_result_dir + '/metrics/predictions_'+str(k+1)+'fold_'+str(epoch)+'Epoch.csv') 
+            pred_data.to_csv(ensemble_result_dir + '/recur_pred/'+str(k+1)+'fold_'+str(epoch)+'Epoch.csv') 
         print('Acc: '+str(acc_list)+'-----'+str(sum(acc_list)/5))
         print('AUC: '+str(sum(auc_score)/5)+'\n')
         print('F1 score: '+str(f1_score)+'-----'+str(sum(f1_score)/5))
@@ -225,14 +222,15 @@ def main(args):
 parser = argparse.ArgumentParser(description='NSCLC recurrence prediction----5fold CV')
 parser.add_argument('--cuda', type=str, default='0', help='cuda number')
 parser.add_argument('--seed', type=int, default=42, help='set seed')
-parser.add_argument('--model_type', type=str, default=None, help='Ensemble_Model_type (ex.3slices)')
-parser.add_argument('--epoch_A', type=str, default=0, help='1st prediction df_epoch')
-parser.add_argument('--epoch_B', type=str, default=0, help='2nd prediction df_epoch')
-parser.add_argument('--epoch_C', type=str, default=0, help='3rd prediction df_epoch')
-parser.add_argument('--single_dir', type=str, default='./results/Ensemble/Single_model_pred/', help='mother directory for single model predictions')   # /data2/gyeon/NSCLC
-parser.add_argument('--ensemble_dir', type=str, default='./results/Ensemble/', help='directory for Ensemble model predictions')
-
+parser.add_argument('--ensemble_type', type=str, default=None, help='Ensemble_Model_type (ex.3slices)')
+parser.add_argument('--single_type', nargs="+", default=["bf", "max","af"], help='Single_Model_type (ex.bf max af)')
+parser.add_argument('--epoch_A', type=str, default=0, help='1st prediction best_epoch')
+parser.add_argument('--epoch_B', type=str, default=0, help='2nd prediction best_epoch')
+parser.add_argument('--epoch_C', type=str, default=0, help='3rd prediction best_epoch')
 args = parser.parse_args()
+
+single_dir = '../../datasets/results/Single_model/'                                    # mother directory for single model predictions
+ensemble_result_dir = '../../datasets/results/Ensemble_model/' + args.ensemble_type   # directory for Ensemble model predictions
 device = torch.device("cuda:"+args.cuda if torch.cuda.is_available() else "cpu") 
 
 main(args)
