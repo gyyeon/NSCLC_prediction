@@ -123,7 +123,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs, fold, datalo
             if phase =='test':             
                 valLosses.append(epoch_loss)
                 valAcc.append(epoch_acc.item())
-                torch.save(model.state_dict(), os.path.join(args.ensemble_dir + '3models/'+args.model_type+'/{}fold-epoch-{}.pth'.format(fold, epoch)))   # testset의 val.accuracy/loss보고 epoch선택 필요
+                torch.save(model.state_dict(), os.path.join(ensemble_result_dir,'/{}fold-epoch-{}.pth'.format(fold, epoch)))   # testset의 val.accuracy/loss보고 epoch선택 필요
                 if epoch_acc > best_acc: 
                     best_acc = epoch_acc 
                     best_epoch = epoch  
@@ -139,8 +139,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs, fold, datalo
     
 
 def main(args):  
-    recur_df = pd.read_csv('./datasets/csv/sorted_GESIEMENS_530.csv')  
-    f1 = open("./datasets/models_idx/noval/test_idx.txt", 'r')    
+    recur_df = pd.read_csv('../../datasets/csv/sorted_GESIEMENS_530.csv')  
+    f1 = open("../../datasets/model_idx/test_idx.txt", 'r')    
     test_lines = f1.readlines()
     idx_list = [None]*5   #train,test_idx
     num_epochs = 300
@@ -157,15 +157,14 @@ def main(args):
     os.environ['PYTHONHASHSEED'] = str(args.seed)
 
     '''
-    epoch_A, epoch_B, epoch_C: Best epochs for single model predictions (filename)
+    epoch_A, epoch_B, epoch_C: Best epochs for single model predictions 
     check model name for prediction files
     '''
-    pred_df_A_list = [pd.read_csv(args.single_dir+ 'predictions_'+str(i+1)+'fold_'+args.epoch_A+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)] 
-    pred_df_B_list = [pd.read_csv(args.single_dir+ 'predictions_'+str(i+1)+'fold_'+args.epoch_B+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)]
-    pred_df_C_list = [pd.read_csv(args.single_dir+ 'predictions_'+str(i+1)+'fold_'+args.epoch_C+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)]
+    pred_df_A_list = [pd.read_csv(single_dir + str(args.single_type[0])+'/'+str(i+1)+'fold_'+args.epoch_A+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)] 
+    pred_df_B_list = [pd.read_csv(single_dir + str(args.single_type[1])+'/'+str(i+1)+'fold_'+args.epoch_B+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)]
+    pred_df_C_list = [pd.read_csv(single_dir + str(args.single_type[2])+'/'+str(i+1)+'fold_'+args.epoch_C+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)]
     pred_dataset_list = [pd.concat([pred_df_A_list[j],pred_df_B_list[j],pred_df_C_list[j]], axis=1) for j in range(5)]
 
-    ensemble_result_dir = args.ensemble_dir + "3models/"+args.model_type
     if not os.path.exists(ensemble_result_dir): os.mkdir(ensemble_result_dir)
     if not os.path.exists(ensemble_result_dir + '/loss'): os.mkdir(ensemble_result_dir + '/loss')
     if not os.path.exists(ensemble_result_dir + '/acc'): os.mkdir(ensemble_result_dir + '/acc')
@@ -217,17 +216,19 @@ def main(args):
     f1.close()
 
 
-# Train/Test settings
+
 parser = argparse.ArgumentParser(description='NSCLC recurrence prediction----5fold CV')
 parser.add_argument('--cuda', type=str, default='0', help='cuda number')
-parser.add_argument('--seed', type=int, default=42, help='seed 고정')
-parser.add_argument('--model_type', type=str, default=None, help='Model_type (ex.3slices)')
-parser.add_argument('--epoch_A', type=str, default=0, help='1st prediction df_epoch')
-parser.add_argument('--epoch_B', type=str, default=0, help='2nd prediction df_epoch')
-parser.add_argument('--epoch_C', type=str, default=0, help='3rd prediction df_epoch')
-parser.add_argument('--single_dir', type=str, default='./results/Ensemble/Single_model_pred/', help='mother directory for single model predictions')   # /data2/gyeon/NSCLC
-parser.add_argument('--ensemble_dir', type=str, default='./results/Ensemble/', help='directory for Ensemble model predictions')
-
+parser.add_argument('--seed', type=int, default=42, help='set seed')
+parser.add_argument('--ensemble_type', type=str, default=None, help='Ensemble_Model_type (ex.3slices)')
+parser.add_argument('--single_type', nargs="+", default=["bf", "max","af"], help='Single_Model_type (ex.bf max af)')
+parser.add_argument('--epoch_A', type=str, default=0, help='1st prediction best_epoch')
+parser.add_argument('--epoch_B', type=str, default=0, help='2nd prediction best_epoch')
+parser.add_argument('--epoch_C', type=str, default=0, help='3rd prediction best_epoch')
 args = parser.parse_args()
-device = torch.device("cuda:"+args.cuda if torch.cuda.is_available() else "cpu") # GPU 이용 가능한지를 확인
+
+single_dir = '../../datasets/results/Single_model/'                                    # mother directory for single model predictions
+ensemble_result_dir = '../../datasets/results/Ensemble_model/' + args.ensemble_type   # directory for Ensemble model predictions
+device = torch.device("cuda:"+args.cuda if torch.cuda.is_available() else "cpu") 
+
 main(args)
