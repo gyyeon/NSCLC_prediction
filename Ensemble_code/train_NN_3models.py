@@ -139,13 +139,6 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs, fold, datalo
     
 
 def main(args):  
-    recur_df = pd.read_csv('../../datasets/csv/sorted_GESIEMENS_530.csv')  
-    f1 = open("../../datasets/model_idx/test_idx.txt", 'r')    
-    test_lines = f1.readlines()
-    idx_list = [None]*5   #train,test_idx
-    num_epochs = 300
-    batch_size = 32
-
     # set seed
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
@@ -156,19 +149,22 @@ def main(args):
     random.seed(args.seed)
     os.environ['PYTHONHASHSEED'] = str(args.seed)
 
-    '''
-    epoch_A, epoch_B, epoch_C: Best epochs for single model predictions 
-    check model name for prediction files
-    '''
-    pred_df_A_list = [pd.read_csv(single_dir + str(args.single_type[0])+'/'+str(i+1)+'fold_'+args.epoch_A+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)] 
-    pred_df_B_list = [pd.read_csv(single_dir + str(args.single_type[1])+'/'+str(i+1)+'fold_'+args.epoch_B+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)]
-    pred_df_C_list = [pd.read_csv(single_dir + str(args.single_type[2])+'/'+str(i+1)+'fold_'+args.epoch_C+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)]
+    pred_df_A_list = [pd.read_csv(single_dir + str(args.single_type[0])+'/recur_pred/'+str(k+1)+'fold_pred.csv', index_col='Unnamed: 0') for i in range(5)] 
+    pred_df_B_list = [pd.read_csv(single_dir + str(args.single_type[1])+'/recur_pred/'+str(k+1)+'fold_pred.csv', index_col='Unnamed: 0') for i in range(5)]
+    pred_df_C_list = [pd.read_csv(single_dir + str(args.single_type[2])+'/recur_pred/'+str(k+1)+'fold_pred.csv', index_col='Unnamed: 0') for i in range(5)]
     pred_dataset_list = [pd.concat([pred_df_A_list[j],pred_df_B_list[j],pred_df_C_list[j]], axis=1) for j in range(5)]
 
-    if not os.path.exists(ensemble_result_dir): os.mkdir(ensemble_result_dir)
-    if not os.path.exists(ensemble_result_dir + '/loss'): os.mkdir(ensemble_result_dir + '/loss')
-    if not os.path.exists(ensemble_result_dir + '/acc'): os.mkdir(ensemble_result_dir + '/acc')
+    if not os.path.exists(ensemble_dir): os.mkdir(ensemble_dir)
+    if not os.path.exists(ensemble_dir + '/loss'): os.mkdir(ensemble_dir + '/loss')
+    if not os.path.exists(ensemble_dir + '/acc'): os.mkdir(ensemble_dir + '/acc')
     
+    recur_df = pd.read_csv('../../datasets/csv/sorted_GESIEMENS_530.csv')  
+    f1 = open("../../datasets/model_idx/test_idx.txt", 'r')    
+    test_lines = f1.readlines()
+    idx_list = [None]*5   #train,test_idx
+    num_epochs = 300
+    batch_size = 32
+
     # New Dataset
     for j,a in enumerate(test_lines):     
         idx_list[j] = list(map(int,a.split()))       
@@ -192,43 +188,30 @@ def main(args):
         testloader = torch.utils.data.DataLoader(testset, batch_size = batch_size)
         dataloaders = {'train': trainloader, 'test': testloader}
 
-        modelA = Net()               
-        modelA = modelA.to(device)    
+        model = Net()               
+        model = model.to(device)    
                                                                              
         criterion = nn.BCELoss()              
         criterion.to(device)                                                   
-        optimizer = optim.SGD(modelA.parameters(), lr =0.01, momentum = 0.5)   
+        optimizer = optim.SGD(model.parameters(), lr =0.01, momentum = 0.5)   
 
         exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.7) # Learning rate Decay__factor of 0.7, every 50 epochs
 
-        model,trainLosses, valLosses, trainAcc, valAcc = train_model(modelA,criterion, optimizer, exp_lr_scheduler, num_epochs, k+1, dataloaders, dataset_sizes) # exp_lr_scheduler,
-        df1 = pd.DataFrame(data={"trainloss": trainLosses})  
-        df2 = pd.DataFrame(data={"valloss": valLosses})
-        df3 = pd.DataFrame(data={"trainacc": trainAcc})
-        df4 = pd.DataFrame(data={"valacc": valAcc})
-        df1.to_csv(ensemble_result_dir + "/loss/trainloss_"+str(k+1)+".csv", sep=',',index=False)   
-        df2.to_csv(ensemble_result_dir + "/loss/valloss_"+str(k+1)+".csv", sep=',',index=False) 
-        df3.to_csv(ensemble_result_dir + "/acc/trainacc_"+str(k+1)+".csv", sep=',',index=False)  
-        df4.to_csv(ensemble_result_dir + "/acc/valacc_"+str(k+1)+".csv", sep=',',index=False) 
-
-        print('********************************'+'\n')
+        model,trainLosses, valLosses, trainAcc, valAcc = train_model(model,criterion, optimizer, exp_lr_scheduler, num_epochs, k+1, dataloaders, dataset_sizes) # exp_lr_scheduler,
 
     f1.close()
 
 
 
 parser = argparse.ArgumentParser(description='NSCLC recurrence prediction----5fold CV')
-parser.add_argument('--cuda', type=str, default='0', help='cuda number')
-parser.add_argument('--seed', type=int, default=42, help='set seed')
 parser.add_argument('--ensemble_type', type=str, default=None, help='Ensemble_Model_type (ex.3slices)')
 parser.add_argument('--single_type', nargs="+", default=["bf", "max","af"], help='Single_Model_type (ex.bf max af)')
-parser.add_argument('--epoch_A', type=str, default=0, help='1st prediction best_epoch')
-parser.add_argument('--epoch_B', type=str, default=0, help='2nd prediction best_epoch')
-parser.add_argument('--epoch_C', type=str, default=0, help='3rd prediction best_epoch')
+parser.add_argument('--cuda', type=str, default='0', help='cuda number')
+parser.add_argument('--seed', type=int, default=42, help='set seed')
 args = parser.parse_args()
 
 single_dir = '../../datasets/results/Single_model/'                                    # mother directory for single model predictions
-ensemble_result_dir = '../../datasets/results/Ensemble_model/' + args.ensemble_type   # directory for Ensemble model predictions
+ensemble_dir = '../../datasets/results/Ensemble_model/' +args.ensemble_type   # directory for Ensemble model predictions
 device = torch.device("cuda:"+args.cuda if torch.cuda.is_available() else "cpu") 
 
 main(args)
