@@ -9,6 +9,6 @@ Ex. Single model prediction using max tumor slice
 
 Ex. Ensemble model prediction using three slices (bf,max,af)
 
-    python train_.py --ensemble_type 3slices --single_type bf max af --cuda 0 --seed 42
+    python train_NN_3models.py --ensemble_type 3slices --single_type bf max af --cuda 0 --seed 42
 
 (2)  
