@@ -123,7 +123,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs, fold, datalo
             if phase =='test':             
                 valLosses.append(epoch_loss)
                 valAcc.append(epoch_acc.item())
-                torch.save(model.state_dict(), os.path.join(ensemble_result_dir,'/{}fold-epoch-{}.pth'.format(fold, epoch)))   # testset의 val.accuracy/loss보고 epoch선택 필요
+                torch.save(model.state_dict(), os.path.join(ensemble_dir,'/{}fold-epoch-{}.pth'.format(fold, epoch)))   # testset의 val.accuracy/loss보고 epoch선택 필요
                 if epoch_acc > best_acc: 
                     best_acc = epoch_acc 
                     best_epoch = epoch  
