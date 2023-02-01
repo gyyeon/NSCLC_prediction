@@ -14,7 +14,7 @@ from sklearn.metrics import (accuracy_score, classification_report, roc_auc_scor
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.sampler import WeightedRandomSampler
 from torchvision import datasets, models, transforms
-
+import random
 
 # Model
 class Net(nn.Module):
@@ -97,18 +97,24 @@ def weight_sampler(labels):
     return sampler
 
 def main(args):  
-    '''
-    epoch_A, epoch_B, epoch_C: Best epochs for single model predictions
-    check model name for prediction files
-    '''
-    pred_df_A_list = [pd.read_csv(single_dir + str(args.single_type[0])+'/'+str(i+1)+'fold_'+args.epoch_A+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)] 
-    pred_df_B_list = [pd.read_csv(single_dir + str(args.single_type[1])+'/'+str(i+1)+'fold_'+args.epoch_B+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)]
-    pred_df_C_list = [pd.read_csv(single_dir + str(args.single_type[2])+'/'+str(i+1)+'fold_'+args.epoch_C+'Epoch.csv', index_col='Unnamed: 0') for i in range(5)]
+    # set seed
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)   # if use multi-GPU
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+    os.environ['PYTHONHASHSEED'] = str(args.seed)
+
+    pred_df_A_list = [pd.read_csv(single_dir + str(args.single_type[0])+'/recur_pred/'+str(k+1)+'fold_pred.csv', index_col='Unnamed: 0') for i in range(5)] 
+    pred_df_B_list = [pd.read_csv(single_dir + str(args.single_type[1])+'/recur_pred/'+str(k+1)+'fold_pred.csv', index_col='Unnamed: 0') for i in range(5)]
+    pred_df_C_list = [pd.read_csv(single_dir + str(args.single_type[2])+'/recur_pred/'+str(k+1)+'fold_pred.csv', index_col='Unnamed: 0') for i in range(5)]
     pred_dataset_list = [pd.concat([pred_df_A_list[j],pred_df_B_list[j],pred_df_C_list[j]], axis=1) for j in range(5)]
 
-    if (os.path.isdir(ensemble_result_dir)==False): os.mkdir(ensemble_result_dir) 
-    if (os.path.isdir(ensemble_result_dir+'/recur_prob')==False): os.mkdir(ensemble_result_dir+'/recur_prob') 
-    if (os.path.isdir(ensemble_result_dir+'/recur_pred')==False): os.mkdir(ensemble_result_dir+'/recur_pred') 
+    if (os.path.isdir(ensemble_dir)==False): os.mkdir(ensemble_dir) 
+    if (os.path.isdir(ensemble_dir+'/recur_prob')==False): os.mkdir(ensemble_dir+'/recur_prob') 
+    if (os.path.isdir(ensemble_dir+'/recur_pred')==False): os.mkdir(ensemble_dir+'/recur_pred') 
 
     recur_df = pd.read_csv('../../datasets/csv/sorted_GESIEMENS_530.csv')   
     total_name_list = recur_df.iloc[:,0].tolist()   
@@ -139,16 +145,16 @@ def main(args):
             testset = feature_Dataset(Ensemble_test_df, recur_df, test_idx)
 
             # Model
-            modelA = Net()             
-            modelA = modelA.to(device)   
+            model = Net()             
+            model = model.to(device)   
                                               
             # Dataloader    
             testloader = torch.utils.data.DataLoader(testset, batch_size = batch_size)
             dataloaders = {'test': testloader}    
 
             # Test
-            modelA.load_state_dict(torch.load(os.path.join(ensemble_result_dir,'/{}fold-epoch-{}.pth'.format(j+1,load))),strict=False)
-            auc, acc, predictions, actuals, recur_prob, scores = evaluate_model(dataloaders['test'], modelA)  
+            model.load_state_dict(torch.load(os.path.join(ensemble_dir,'/{}fold-epoch-{}.pth'.format(j+1,load))),strict=False)
+            auc, acc, predictions, actuals, recur_prob, scores = evaluate_model(dataloaders['test'], model)  
             print(str(j+1) + 'fold____Accuracy: %.3f' % acc) 
 
             if j==0: fold1_test_acc.append(acc)         
@@ -174,7 +180,7 @@ def main(args):
     
 
     for epoch in best_epoch_list:
-        f3 = open(ensemble_result_dir + "/NN_metrics_"+str(epoch)+"Epoch.txt", 'w')
+        f3 = open(ensemble_dir + "/NN_metrics_"+str(epoch)+"Epoch.txt", 'w')
         precision_score = []
         f1_score = []
         recall_score = []
@@ -189,13 +195,13 @@ def main(args):
             Ensemble_test_df = pred_dataset_list[k]    
             testset = feature_Dataset(Ensemble_test_df, recur_df, test_idx)
 
-            modelA = Net()          
-            modelA = modelA.to(device)   
+            model = Net()          
+            model = model.to(device)   
 
             testloader = torch.utils.data.DataLoader(testset, batch_size = batch_size)
 
-            modelA.load_state_dict(torch.load(os.path.join(ensemble_result_dir + '/{}fold-epoch-{}.pth'.format(k+1,epoch))), strict=False)
-            auc, acc, predictions, actuals, recur_prob, scores = evaluate_model(testloader, modelA)  #
+            model.load_state_dict(torch.load(os.path.join(ensemble_dir + '/{}fold-epoch-{}.pth'.format(k+1,epoch))), strict=False)
+            auc, acc, predictions, actuals, recur_prob, scores = evaluate_model(testloader, model)  #
             precision_score.append(scores[0])  
             recall_score.append(scores[1])
             f1_score.append(scores[2])
@@ -205,7 +211,7 @@ def main(args):
 
             # prob_data = pd.DataFrame(data={"recur_prob": recur_prob}, index = test_fn)  
             pred_data = pd.DataFrame(data={"predictions": predictions}, index = test_fn)       
-            pred_data.to_csv(ensemble_result_dir + '/recur_pred/'+str(k+1)+'fold_'+str(epoch)+'Epoch.csv') 
+            pred_data.to_csv(ensemble_dir + '/recur_pred/'+str(k+1)+'fold_pred.csv') 
         print('Acc: '+str(acc_list)+'-----'+str(sum(acc_list)/5))
         print('AUC: '+str(sum(auc_score)/5)+'\n')
         print('F1 score: '+str(f1_score)+'-----'+str(sum(f1_score)/5))
@@ -220,17 +226,14 @@ def main(args):
 
 # Train/Test settings
 parser = argparse.ArgumentParser(description='NSCLC recurrence prediction----5fold CV')
-parser.add_argument('--cuda', type=str, default='0', help='cuda number')
-parser.add_argument('--seed', type=int, default=42, help='set seed')
 parser.add_argument('--ensemble_type', type=str, default=None, help='Ensemble_Model_type (ex.3slices)')
 parser.add_argument('--single_type', nargs="+", default=["bf", "max","af"], help='Single_Model_type (ex.bf max af)')
-parser.add_argument('--epoch_A', type=str, default=0, help='1st prediction best_epoch')
-parser.add_argument('--epoch_B', type=str, default=0, help='2nd prediction best_epoch')
-parser.add_argument('--epoch_C', type=str, default=0, help='3rd prediction best_epoch')
+parser.add_argument('--cuda', type=str, default='0', help='cuda number')
+parser.add_argument('--seed', type=int, default=42, help='set seed')
 args = parser.parse_args()
 
-single_dir = '../../datasets/results/Single_model/'                                    # mother directory for single model predictions
-ensemble_result_dir = '../../datasets/results/Ensemble_model/' + args.ensemble_type   # directory for Ensemble model predictions
+single_dir = '../../datasets/results/Single_model/'                            # mother directory for single model predictions
+ensemble_dir = '../../datasets/results/Ensemble_model/' + args.ensemble_type   # directory for Ensemble model predictions
 device = torch.device("cuda:"+args.cuda if torch.cuda.is_available() else "cpu") 
 
 main(args)
