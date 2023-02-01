@@ -19,7 +19,7 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.sampler import WeightedRandomSampler
 from torchvision import datasets, models, transforms
-
+import random
 
 # Model
 class Net(nn.Module):
@@ -185,6 +185,16 @@ def weight_sampler(labels):
 
 
 def main(args):
+    # set seed
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)   # if use multi-GPU
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+    os.environ['PYTHONHASHSEED'] = str(args.seed)
+
     if (os.path.isdir(result_dir)==False): os.mkdir(result_dir)  
     if (os.path.isdir(result_dir + '/loss')==False): os.mkdir(result_dir + '/loss') 
     if (os.path.isdir(result_dir + '/acc')==False): os.mkdir(result_dir + '/acc') 
@@ -220,17 +230,17 @@ def main(args):
         testloader = torch.utils.data.DataLoader(testset, batch_size = batch_size)
         dataloaders = {'train': trainloader, 'test': testloader}
         
-        modelA = Net()               
-        modelA = modelA.to(device)    
+        model = Net()               
+        model = model.to(device)    
                                                                            
         criterion = nn.BCELoss()              
         criterion.to(device)                                                   
-        optimizer = optim.SGD(modelA.parameters(), lr =0.0005, momentum = 0.5)  
+        optimizer = optim.SGD(model.parameters(), lr =0.0005, momentum = 0.5)  
         
         exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.7) # Learning rate Decay__factor of 0.7, every 50 epochs
 
         # Train, Test
-        model,trainLosses, valLosses, trainAcc, valAcc = train_model(modelA,criterion, optimizer, exp_lr_scheduler, num_epochs, k+1, dataloaders, dataset_sizes) 
+        model,trainLosses, valLosses, trainAcc, valAcc = train_model(model,criterion, optimizer, exp_lr_scheduler, num_epochs, k+1, dataloaders, dataset_sizes) 
 
     f2.close()
     f1.close()
@@ -238,12 +248,12 @@ def main(args):
 
 # Train/Test settings
 parser = argparse.ArgumentParser(description='NSCLC recurrence prediction----5fold CV')
-parser.add_argument('--model', type=str, default='0', help='model number')
+parser.add_argument('--model_type', type=str, default='max', help='Single_Model_type (ex.bf max af)')
 parser.add_argument('--cuda', type=str, default='0', help='cuda number')
 parser.add_argument('--seed', type=int, default=42, help='set seed')
 args=parser.parse_args()
 
-result_dir = '../../datasets/results/Single_model/max'
+result_dir = '../../datasets/results/Single_model/'+args.model_type
 device = torch.device("cuda:"+args.cuda if torch.cuda.is_available() else "cpu") 
 
 main(args)
