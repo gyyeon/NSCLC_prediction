@@ -20,4 +20,4 @@ Ensemble model for NSCLC recurrence prediction
                         train_idx.txt
                         test_idx.txt
              /csv/sorted_GESIEMENS_530.csv
-             /2D/5mm5slice/max_img
+             /2D/5mm5slice/max_img/ ~.tif
