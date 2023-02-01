@@ -20,5 +20,3 @@ Ex. Ensemble model prediction using three slices (bf,max,af)
                         test_idx.txt
              /csv/sorted_GESIEMENS_530.csv
              /2D/5mm5slice/max_img
-
-
