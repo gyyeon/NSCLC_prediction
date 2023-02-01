@@ -1,7 +1,7 @@
 # NSCLC_prediction
 Ensemble model for NSCLC recurrence prediction
 
-## Demo:
+## Demo
 (1) Instructions to run on data:
 Ex. Single model prediction using max tumor slice
 
