@@ -11,4 +11,14 @@ Ex. Ensemble model prediction using three slices (bf,max,af)
 
     python train_NN_3models.py --ensemble_type 3slices --single_type bf max af --cuda 0 --seed 42
 
-(2)  fed
+(2)  File organization
+
+    /datasets/results/Single_model/max
+                     /Ensemble_model/3slices
+             /model_idx/
+                        train_idx.txt
+                        test_idx.txt
+             /csv/sorted_GESIEMENS_530.csv
+             /2D/5mm5slice/max_img
+
+
