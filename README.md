@@ -14,8 +14,7 @@ Ensemble model for NSCLC recurrence prediction
 
 (2)  File organization
 
-    /datasets/results/Single_model/max/
-                     /Ensemble_model/3slices/
+    /datasets/results/Single_model/max/Ensemble_model/3slices/
              /model_idx/
                         train_idx.txt
                         test_idx.txt
