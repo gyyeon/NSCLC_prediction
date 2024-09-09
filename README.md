@@ -8,7 +8,7 @@ Ensemble model for NSCLC recurrence prediction
 
     python train.py --model_type max --cuda 0 --seed 42
 
-   ex. Ensemble model prediction using three slices (bf,max,af)
+   ex. Ensemble model prediction using three slices (bf, max, af)
 
     python train_NN_3models.py --ensemble_type 3slices --single_type bf max af --cuda 0 --seed 42
 
