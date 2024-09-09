@@ -2,7 +2,7 @@
 Ensemble model for NSCLC recurrence prediction
 
 ## Demo
-1. Instructions to run on data:
+### **1. Instructions to run on data:**
 
    ex. Single model prediction using max tumor slice
 
@@ -12,7 +12,7 @@ Ensemble model for NSCLC recurrence prediction
 
     python train_NN_3models.py --ensemble_type 3slices --single_type bf max af --cuda 0 --seed 42
 
-2. File organization
+### **2. File organization**
 
     /datasets/results/Single_model/max/Ensemble_model/3slices/
              /model_idx/
